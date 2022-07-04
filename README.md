@@ -1,5 +1,5 @@
 # 1. Overview
-BlueZX is base on [BlueZ](http://www.bluez.org/) (bluez-5.56).
+BlueZX is based on [BlueZ](http://www.bluez.org/) (bluez-5.56).
 
 It wrapped all features of bluetoothctl and provides some callback functions.
 
