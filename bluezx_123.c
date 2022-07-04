@@ -30,7 +30,7 @@ static BlueZX_t bluezx_123 = {
 	.isinit = 0,
 };
 
-void simple_gatt_chrc_write_value_cb(struct chrc *chrc, char *device, char *link)
+void simple_gatt_chrc_write_value_cb(void *user_data, struct chrc *chrc, char *device, char *link)
 {
 	char *chrc_uuid = chrc->uuid;
 	struct service *service = chrc->service;

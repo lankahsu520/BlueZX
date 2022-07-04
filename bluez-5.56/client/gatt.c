@@ -1265,6 +1265,11 @@ static void register_app_reply(DBusMessage *message, void *user_data)
 	}
 
 	BT_SHELL_DBG("Application registered\n");
+#ifdef BLUEZX
+	{
+		bluezx_gatt_application_registered_cb();
+	}
+#endif
 
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
@@ -1622,7 +1627,7 @@ void gatt_register_service(DBusConnection *conn, GDBusProxy *proxy,
 	service->path = g_strdup_printf("%s/service%u", APP_PATH,
 					g_list_length(local_services));
 	service->primary = primary;
-	DBG_WN_LN("(service->uuid: %s, service->path: %s, service->primary: %d)", service->uuid, service->path, service->primary);
+	DBG_IF_LN("(service->uuid: %s, service->path: %s, service->primary: %d)", service->uuid, service->path, service->primary);
 
 	if (argc > 2)
 		service->handle = atoi(argv[2]);
@@ -1643,6 +1648,7 @@ void gatt_register_service(DBusConnection *conn, GDBusProxy *proxy,
 
 #ifdef BLUEZX
 	DBG_WN_LN("(service->primary: %d)", service->primary);
+	bluezx_gatt_register_service_cb(service);
 #else
 	bt_shell_prompt_input(service->path, "Primary (yes/no):",
 		 service_set_primary, service);
@@ -2789,6 +2795,8 @@ void gatt_register_chrc(DBusConnection *conn, GDBusProxy *proxy,
 #ifdef BLUEZX
 	chrc_set_short(0, chrc);
 	qbuf_init(&chrc->qbuf, MAX_OF_QBUF_1MB);
+
+	bluezx_gatt_register_chrc_cb(chrc);
 #else
 	bt_shell_prompt_input(chrc->path, "Enter value:", chrc_set_value, chrc);
 #endif

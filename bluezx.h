@@ -91,10 +91,14 @@ typedef struct CHRC_Struct
 	struct chrc *chrc;
 } CHRC_t;
 
-typedef void gatt_chrc_write_value_fn(struct chrc *chrc, char *device, char *link);
-typedef void advertising_registered_fn(void);
-typedef void advertising_unregistered_fn(void);
-typedef void advertising_released_fn(void);
+typedef void gatt_chrc_write_value_fn(void *user_data, struct chrc *chrc, char *device, char *link);
+typedef void gatt_application_registered_fn(void *user_data);
+typedef void gatt_register_service_fn(void *user_data, struct service *service);
+typedef void gatt_register_chrc_fn(void *user_data, struct chrc *chrc);
+
+typedef void advertising_registered_fn(void *user_data);
+typedef void advertising_unregistered_fn(void *user_data);
+typedef void advertising_released_fn(void *user_data);
 
 typedef void client_ready_fn(GDBusClient *client, void *user_data);
 
@@ -124,6 +128,10 @@ typedef struct BlueZX_Struct
 	int isagent;
 
 	gatt_chrc_write_value_fn *gatt_chrc_write_value_cb;
+	gatt_application_registered_fn *gatt_application_registered_cb;
+	gatt_register_service_fn *gatt_register_service_cb;
+	gatt_register_chrc_fn *gatt_register_chrc_cb;
+
 	advertising_registered_fn *advertising_registered_cb;
 	advertising_unregistered_fn *advertising_unregistered_cb;
 	advertising_released_fn *advertising_released_cb;
@@ -144,6 +152,9 @@ typedef struct BlueZX_Struct
 //** function **
 //******************************************************************************
 void bluezx_gatt_chrc_write_value_cb(struct chrc *chrc, char *device, char *link);
+void bluezx_gatt_application_registered_cb(void);
+void bluezx_gatt_register_service_cb(struct service *service);
+void bluezx_gatt_register_chrc_cb(struct chrc *chrc);
 
 void bluezx_advertising_set(BlueZX_t *bluezx_req, int isadvertising);
 int bluezx_advertising(BlueZX_t *bluezx_req);

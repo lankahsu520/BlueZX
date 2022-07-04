@@ -26,7 +26,31 @@ void bluezx_gatt_chrc_write_value_cb(struct chrc *chrc, char *device, char *link
 
 	if ( (bluezx_req_last) && (bluezx_req_last->gatt_chrc_write_value_cb) )
 	{
-		bluezx_req_last->gatt_chrc_write_value_cb(chrc, device, link);
+		bluezx_req_last->gatt_chrc_write_value_cb(bluezx_req_last, chrc, device, link);
+	}
+}
+
+void bluezx_gatt_application_registered_cb(void)
+{
+	if ( (bluezx_req_last) && (bluezx_req_last->gatt_application_registered_cb) )
+	{
+		bluezx_req_last->gatt_application_registered_cb(bluezx_req_last);
+	}
+}
+
+void bluezx_gatt_register_service_cb(struct service *service)
+{
+	if ( (bluezx_req_last) && (bluezx_req_last->gatt_application_registered_cb) )
+	{
+		bluezx_req_last->gatt_register_service_cb(bluezx_req_last, service);
+	}
+}
+
+void bluezx_gatt_register_chrc_cb(struct chrc *chrc)
+{
+	if ( (bluezx_req_last) && (bluezx_req_last->gatt_application_registered_cb) )
+	{
+		bluezx_req_last->gatt_register_chrc_cb(bluezx_req_last, chrc);
 	}
 }
 
@@ -49,7 +73,7 @@ void bluezx_advertising_registered_cb(void)
 	if ( (bluezx_req_last) && (bluezx_req_last->advertising_registered_cb) )
 	{
 		bluezx_advertising_set(bluezx_req_last, 1);
-		bluezx_req_last->advertising_registered_cb();
+		bluezx_req_last->advertising_registered_cb(bluezx_req_last);
 	}
 }
 
@@ -58,7 +82,7 @@ void bluezx_advertising_unregistered_cb(void)
 	if ( (bluezx_req_last) && (bluezx_req_last->advertising_unregistered_cb) )
 	{
 		bluezx_advertising_set(bluezx_req_last, 0);
-		bluezx_req_last->advertising_unregistered_cb();
+		bluezx_req_last->advertising_unregistered_cb(bluezx_req_last);
 	}
 }
 
@@ -67,7 +91,7 @@ void bluezx_advertising_released_cb(void)
 	if ( (bluezx_req_last) && (bluezx_req_last->advertising_released_cb) )
 	{
 		bluezx_advertising_set(bluezx_req_last, 0);
-		bluezx_req_last->advertising_released_cb();
+		bluezx_req_last->advertising_released_cb(bluezx_req_last);
 	}
 }
 
