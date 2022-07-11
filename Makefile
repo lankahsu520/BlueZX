@@ -1,17 +1,17 @@
+PWD=$(shell pwd)
 -include $(SDK_CONFIG_CONFIG)
-include $(PJ_MK_CUSTOMER)
 
 #[major].[minor].[revision].[build]
 VERSION_MAJOR = 1
 VERSION_MINOR = 0
 VERSION_REVISION = 0
-VERSION = $(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_REVISION)
+VERSION_FULL = $(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_REVISION)
 LIBNAME = xxx
 
 BLUEZ_VERSION=5.56
 BLUEZ=bluez-$(BLUEZ_VERSION)
 BLUEZX=
-BLUEZX_DIR=.
+BLUEZX_DIR=$(PWD)
 BLUEZ_DIR=$(BLUEZX_DIR)/$(BLUEZ)
 
 #** CFLAGS & LDFLAGS **
@@ -87,6 +87,7 @@ HEADER_FILES = \
 
 #** librarys **
 LIBS_yes = $(LIBXXXS_yes)
+#** LIBS_yes, CLEAN_BINS, DUMMY_BINS  **
 -include $(PJ_MK_USER_LIB)
 
 LIBS += $(LIBS_yes) -lreadline -lncurses #-ltinfo
@@ -118,6 +119,9 @@ CONFS = \
 				$(wildcard conf/*.conf)
 
 TO_FOLDER =
+
+#** include *.mk **
+-include define.mk
 
 .DEFAULT_GOAL = all
 .SUFFIXES: .c .o
@@ -164,8 +168,8 @@ distclean: clean
 
 %.so: $(LIBXXX_OBJS)
 	@echo 'Building lib (shared): $@'
-	$(CC) -shared $(LDFLAGS) -Wl,-soname,$@.$(VERSION_MAJOR) -o $@.$(VERSION) $(LIBXXX_OBJS)
-	ln -sf $@.$(VERSION) $@.$(VERSION_MAJOR)
+	$(CC) -shared $(LDFLAGS) -Wl,-soname,$@.$(VERSION_MAJOR) -o $@.$(VERSION_FULL) $(LIBXXX_OBJS)
+	ln -sf $@.$(VERSION_FULL) $@.$(VERSION_MAJOR)
 	ln -sf $@.$(VERSION_MAJOR) $@
 	@echo 'Finished building lib (shared): $@'
 	@echo ' '
@@ -173,7 +177,7 @@ distclean: clean
 install: all
 	@for subbin in $(CLEAN_BINS); do \
 		$(PJ_SH_CP) $$subbin $(SDK_BIN_DIR); \
-		$(STRIP) $(SDK_BIN_DIR)/$$subbin; \
+		$(STRIP) $(SDK_BIN_DIR)/`basename $$subbin`; \
 	done
 	@for subshell in $(SHELL_SBINS); do \
 		$(PJ_SH_CP) $$subshell $(SDK_SBIN_DIR); \
@@ -183,7 +187,7 @@ romfs: install
 ifneq ("$(HOMEX_ROOT_DIR)", "")
 	@for subbin in $(DUMMY_BINS); do \
 		$(PJ_SH_CP) $$subbin $(HOMEX_BIN_DIR); \
-		$(STRIP) $(HOMEX_BIN_DIR)/$$subbin; \
+		$(STRIP) $(HOMEX_BIN_DIR)/`basename $$subbin`; \
 	done
 	@for subshell in $(DUMMY_SBINS); do \
 		$(PJ_SH_CP) $$subshell $(HOMEX_SBIN_DIR); \

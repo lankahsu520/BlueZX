@@ -170,6 +170,9 @@ static void print_adapter(GDBusProxy *proxy, const char *description)
 	else
 		name = "<unknown>";
 
+#ifdef BLUEZX
+	bluezx_ctrl_address_and_name_cb((char*)address, (char*)name);
+#endif
 	BT_SHELL_DBG("%s%s%sController %s %s %s\n",
 				description ? "[" : "",
 				description ? : "",
@@ -1114,6 +1117,9 @@ static void generic_callback(const DBusError *error, void *user_data)
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	} else {
 		BT_SHELL_DBG("Changing %s succeeded\n", str);
+#ifdef BLUEZX
+		bluezx_ctrl_name_cb((char*)str);
+#endif
 		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 	}
 }
@@ -3119,7 +3125,7 @@ static const struct bt_shell_opt opt = {
 
 static void client_ready_cb(GDBusClient *client, void *user_data)
 {
-	DBG_TR_LN(DBG_TXT_ENTER);
+	DBG_WN_LN(DBG_TXT_ENTER);
 #ifdef BLUEZX
 	bluezx_client_ready_cb(client, user_data);
 #endif

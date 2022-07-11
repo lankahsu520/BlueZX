@@ -110,6 +110,13 @@ typedef void connect_handler_fn(DBusConnection *connection, void *user_data);
 typedef void disconnect_handler_fn(DBusConnection *connection, void *user_data);
 typedef void message_handler_fn(DBusConnection *connection, DBusMessage *message, void *user_data);
 
+typedef struct CTRL_Struct
+{
+	char name[LEN_OF_NAME64];
+	char address[LEN_OF_MAC];
+
+} CTRL_t;
+
 typedef struct BlueZX_Struct
 {
 	char name[LEN_OF_NAME32];
@@ -145,12 +152,16 @@ typedef struct BlueZX_Struct
 	disconnect_handler_fn *disconnect_handler_cb;
 	message_handler_fn *message_handler_cb;
 
+	CTRL_t ctrl;
 	void *data;
 } BlueZX_t;
 
 //******************************************************************************
 //** function **
 //******************************************************************************
+void bluezx_ctrl_name_cb(char *name);
+void bluezx_ctrl_address_and_name_cb(char *address, char *name);
+
 void bluezx_gatt_chrc_write_value_cb(struct chrc *chrc, char *device, char *link);
 void bluezx_gatt_application_registered_cb(void);
 void bluezx_gatt_register_service_cb(struct service *service);

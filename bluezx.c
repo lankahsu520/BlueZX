@@ -16,6 +16,29 @@
 
 static BlueZX_t *bluezx_req_last = NULL;
 
+void bluezx_ctrl_name_cb(char *name)
+{
+	DBG_IF_LN("(name: %s)", name);
+
+	if (bluezx_req_last)
+	{
+		CTRL_t *ctrl = &bluezx_req_last->ctrl;
+		SAFE_SPRINTF_EX(ctrl->name, "%s", name);
+	}
+}
+
+void bluezx_ctrl_address_and_name_cb(char *address, char *name)
+{
+	DBG_IF_LN("(address: %s, name: %s)", address, name);
+
+	if (bluezx_req_last)
+	{
+		CTRL_t *ctrl = &bluezx_req_last->ctrl;
+		SAFE_SPRINTF_EX(ctrl->address, "%s", address);
+		SAFE_SPRINTF_EX(ctrl->name, "%s", name);
+	}
+}
+
 void bluezx_gatt_chrc_write_value_cb(struct chrc *chrc, char *device, char *link)
 {
 	char *chrc_uuid = chrc->uuid;
