@@ -102,6 +102,138 @@ GList *bluezx_battery_proxies_get(void)
 	return battery_proxies;
 }
 
+int bluezx_ctrl_property_get(const char *name, char *value)
+{
+	int ret = 0;
+	struct adapter *adapter = default_ctrl;
+	DBusMessageIter iter;
+
+	if (g_dbus_proxy_get_property(adapter->proxy, name, &iter) == FALSE)
+	{
+		return -1;
+	}
+
+	dbus_bool_t valbool;
+	dbus_uint32_t valu32;
+	dbus_uint16_t valu16;
+	dbus_int16_t vals16;
+	unsigned char byte;
+	const char *valstr;
+	DBusMessageIter subiter;
+	//char *entry;
+
+	switch (dbus_message_iter_get_arg_type(&iter))
+	{
+		case DBUS_TYPE_INVALID:
+#if (1)
+			ret = -1;
+#else
+			BT_SHELL_DBG("%s%s is invalid\n", label, name);
+#endif
+			break;
+		case DBUS_TYPE_STRING:
+		case DBUS_TYPE_OBJECT_PATH:
+			dbus_message_iter_get_basic(&iter, &valstr);
+#if (1)
+			sprintf(value, "%s", valstr);
+#else
+			BT_SHELL_DBG("%s%s: %s\n", label, name, valstr);
+#endif
+			break;
+		case DBUS_TYPE_BOOLEAN:
+			dbus_message_iter_get_basic(&iter, &valbool);
+#if (1)
+			sprintf(value, "%s", valbool == TRUE ? "yes" : "no");
+#else
+			BT_SHELL_DBG("%s%s: %s\n", label, name,
+						valbool == TRUE ? "yes" : "no");
+#endif
+			break;
+		case DBUS_TYPE_UINT32:
+			dbus_message_iter_get_basic(&iter, &valu32);
+#if (1)
+			sprintf(value, "%d", valu32);
+#else
+			BT_SHELL_DBG("%s%s: 0x%08x\n", label, name, valu32);
+#endif
+			break;
+		case DBUS_TYPE_UINT16:
+			dbus_message_iter_get_basic(&iter, &valu16);
+#if (1)
+			sprintf(value, "%d", valu16);
+#else
+			BT_SHELL_DBG("%s%s: 0x%04x\n", label, name, valu16);
+#endif
+			break;
+		case DBUS_TYPE_INT16:
+			dbus_message_iter_get_basic(&iter, &vals16);
+#if (1)
+			sprintf(value, "%d", vals16);
+#else
+			BT_SHELL_DBG("%s%s: %d\n", label, name, vals16);
+#endif
+			break;
+		case DBUS_TYPE_BYTE:
+			dbus_message_iter_get_basic(&iter, &byte);
+#if (1)
+			sprintf(value, "%d", vals16);
+#else
+			BT_SHELL_DBG("%s%s: 0x%02x (%d)\n", label, name, byte, byte);
+#endif
+			break;
+		case DBUS_TYPE_VARIANT:
+			dbus_message_iter_recurse(&iter, &subiter);
+#if (1)
+			ret = -1;
+#else
+			print_iter(label, name, &subiter);
+#endif
+			break;
+		case DBUS_TYPE_ARRAY:
+			dbus_message_iter_recurse(&iter, &subiter);
+#if (1)
+			ret = -1;
+#else
+			if (dbus_type_is_fixed(
+					dbus_message_iter_get_arg_type(&subiter))) {
+				print_fixed_iter(label, name, &subiter);
+				break;
+			}
+
+			while (dbus_message_iter_get_arg_type(&subiter) !=
+								DBUS_TYPE_INVALID) {
+				print_iter(label, name, &subiter);
+				dbus_message_iter_next(&subiter);
+			}
+#endif
+			break;
+		case DBUS_TYPE_DICT_ENTRY:
+#if (1)
+			ret = -1;
+#else
+			dbus_message_iter_recurse(iter, &subiter);
+			entry = g_strconcat(name, " Key", NULL);
+			print_iter(label, entry, &subiter);
+			g_free(entry);
+
+			entry = g_strconcat(name, " Value", NULL);
+			dbus_message_iter_next(&subiter);
+			print_iter(label, entry, &subiter);
+			g_free(entry);
+#endif
+			break;
+		default:
+#if (1)
+			ret = -1;
+#else
+			BT_SHELL_DBG("%s%s has unsupported type\n", label, name);
+#endif
+			break;
+	}
+
+	return ret;
+}
+
 #ifdef BLUEZX
 static void bluezx_cmd_read_chrc(int argc, char *argv[])
 {
@@ -981,6 +1113,7 @@ static void cmd_list(int argc, char *argv[])
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
 
+// show
 static void cmd_show(int argc, char *argv[])
 {
 	struct adapter *adapter;
@@ -1117,6 +1250,19 @@ static void generic_callback(const DBusError *error, void *user_data)
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	} else {
 		BT_SHELL_DBG("Changing %s succeeded\n", str);
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+	}
+}
+
+static void generic_callback_Alias(const DBusError *error, void *user_data)
+{
+	char *str = user_data;
+
+	if (dbus_error_is_set(error)) {
+		BT_SHELL_DBG("Failed to set %s: %s\n", str, error->name);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	} else {
+		BT_SHELL_DBG("Changing %s succeeded\n", str);
 #ifdef BLUEZX
 		bluezx_ctrl_name_cb((char*)str);
 #endif
@@ -1124,6 +1270,23 @@ static void generic_callback(const DBusError *error, void *user_data)
 	}
 }
 
+static void generic_callback_Pairable(const DBusError *error, void *user_data)
+{
+	char *str = user_data;
+
+	if (dbus_error_is_set(error)) {
+		BT_SHELL_DBG("Failed to set %s: %s\n", str, error->name);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	} else {
+		BT_SHELL_DBG("Changing %s succeeded\n", str);
+#ifdef BLUEZX
+		bluezx_ctrl_pairable_cb((char*)str);
+#endif
+		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+	}
+}
+
+// system-alias
 static void cmd_system_alias(int argc, char *argv[])
 {
 	char *name;
@@ -1135,12 +1298,13 @@ static void cmd_system_alias(int argc, char *argv[])
 
 	if (g_dbus_proxy_set_property_basic(default_ctrl->proxy, "Alias",
 					DBUS_TYPE_STRING, &name,
-					generic_callback, name, g_free) == TRUE)
+					generic_callback_Alias, name, g_free) == TRUE)
 		return;
 
 	g_free(name);
 }
 
+// reset-alias
 static void cmd_reset_alias(int argc, char *argv[])
 {
 	char *name;
@@ -1152,7 +1316,7 @@ static void cmd_reset_alias(int argc, char *argv[])
 
 	if (g_dbus_proxy_set_property_basic(default_ctrl->proxy, "Alias",
 					DBUS_TYPE_STRING, &name,
-					generic_callback, name, g_free) == TRUE)
+					generic_callback_Alias, name, g_free) == TRUE)
 		return;
 
 	g_free(name);
@@ -1194,7 +1358,7 @@ static void cmd_pairable(int argc, char *argv[])
 
 	if (g_dbus_proxy_set_property_basic(default_ctrl->proxy, "Pairable",
 					DBUS_TYPE_BOOLEAN, &pairable,
-					generic_callback, str, g_free) == TRUE)
+					generic_callback_Pairable, str, g_free) == TRUE)
 		return;
 
 	g_free(str);

@@ -45,6 +45,15 @@ void simple_gatt_chrc_write_value_cb(void *user_data, struct chrc *chrc, char *d
 
 void simple_client_ready_cb(GDBusClient *client, void *user_data)
 {
+	//bluezx_exec_helper(shell_exec_helper, &bluezx_123, "show", NULL);
+	{
+		char val[LEN_OF_BUF128] = "";
+		bluezx_ctrl_property_get("Pairable", val);
+		DBG_ER_LN("(Pairable, val: %s)", val);
+		bluezx_ctrl_property_get("Address", val);
+		DBG_ER_LN("(Address, val: %s)" , val);
+	}
+
 	char uuid[LEN_OF_UUID] = "";
 	SAFE_SPRINTF(uuid, "0x%04X", UUID16_LANKAHSU520_SERVICE_F999);
 	bluezx_exec_helper(shell_exec_helper, &bluezx_123, "gatt.register-service", uuid, NULL);

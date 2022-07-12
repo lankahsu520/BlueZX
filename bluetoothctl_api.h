@@ -52,6 +52,7 @@ GDBusProxy *bluezx_attr_get(void);
 GList *bluezx_ctrl_list_get(void);
 GList *bluezx_battery_proxies_get(void);
 
+int bluezx_ctrl_property_get(const char *name, char *value);
 
 int bluetoothctl_start(int argc, char *argv[], void *user_data);
 

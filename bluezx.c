@@ -16,6 +16,17 @@
 
 static BlueZX_t *bluezx_req_last = NULL;
 
+void bluezx_ctrl_pairable_cb(char *name)
+{
+	DBG_IF_LN("(name: %s)", name);
+
+	if (bluezx_req_last)
+	{
+		CTRL_t *ctrl = &bluezx_req_last->ctrl;
+		SAFE_SPRINTF_EX(ctrl->name, "%s", name);
+	}
+}
+
 void bluezx_ctrl_name_cb(char *name)
 {
 	DBG_IF_LN("(name: %s)", name);
