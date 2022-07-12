@@ -16,14 +16,21 @@
 
 static BlueZX_t *bluezx_req_last = NULL;
 
-void bluezx_ctrl_pairable_cb(char *name)
+void bluezx_ctrl_pairable_cb(char *str)
 {
-	DBG_IF_LN("(name: %s)", name);
+	DBG_IF_LN("(str: %s)", str);
 
 	if (bluezx_req_last)
 	{
 		CTRL_t *ctrl = &bluezx_req_last->ctrl;
-		SAFE_SPRINTF_EX(ctrl->name, "%s", name);
+		if ( SAFE_STRSTR(str, "on") )
+		{
+			ctrl->pairable = 1;
+		}
+		else
+		{
+			ctrl->pairable = 0;
+		}
 	}
 }
 

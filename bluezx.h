@@ -115,6 +115,7 @@ typedef struct CTRL_Struct
 	char name[LEN_OF_NAME64];
 	char address[LEN_OF_MAC];
 
+	int pairable;
 } CTRL_t;
 
 typedef struct BlueZX_Struct
@@ -159,7 +160,7 @@ typedef struct BlueZX_Struct
 //******************************************************************************
 //** function **
 //******************************************************************************
-void bluezx_ctrl_pairable_cb(char *name);
+void bluezx_ctrl_pairable_cb(char *str);
 
 void bluezx_ctrl_name_cb(char *name);
 void bluezx_ctrl_address_and_name_cb(char *address, char *name);
