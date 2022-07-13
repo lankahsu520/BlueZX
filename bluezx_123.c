@@ -101,8 +101,15 @@ static void app_loop(void)
 
 		bluezx_thread_init(&bluezx_123, save_path);
 
+		static int count = 0;
 		while (app_quit()==0)
 		{
+			count++;
+			if (count == 5)
+			{
+				bluezx_ctrl_pairable_set("on");
+				bluezx_ctrl_pairable_set("off");
+			}
 			sleep(1);
 		}
 	}

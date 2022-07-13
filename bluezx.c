@@ -16,9 +16,50 @@
 
 static BlueZX_t *bluezx_req_last = NULL;
 
+int bluezx_ctrl_pairable_set(char *str)
+{
+	int ret = 0;
+
+	if ((bluezx_req_last) && (str) )
+	{
+		char val[LEN_OF_BUF128] = "";
+		SAFE_SPRINTF(val, "%s", str);
+		bluezx_exec_helper(shell_exec_helper, bluezx_req_last, "pairable", val, NULL);
+
+		{
+			ThreadX_t *tidx_req = &bluezx_req_last->tidx;
+			threadx_timewait_simple(tidx_req, 2000);
+		}
+
+		{
+			CTRL_t *ctrl = &bluezx_req_last->ctrl;
+			if ( ( SAFE_STRSTR(str, "on") ) && (ctrl->pairable == 1) )
+			{
+				DBG_DB_LN("(ctrl->pairable: %d, str: %s)", ctrl->pairable, str);
+				ret = 0;
+			}
+			else if ( ( SAFE_STRSTR(str, "off") ) && (ctrl->pairable == 0) )
+			{
+				DBG_DB_LN("(ctrl->pairable: %d, str: %s)", ctrl->pairable, str);
+				ret = 0;
+			}
+			else
+			{
+				ret = -1;
+			}
+		}
+	}
+	else
+	{
+		ret = -1;
+	}
+
+	return ret;
+}
+
 void bluezx_ctrl_pairable_cb(char *str)
 {
-	DBG_IF_LN("(str: %s)", str);
+	DBG_DB_LN("(str: %s)", str);
 
 	if (bluezx_req_last)
 	{
@@ -31,12 +72,17 @@ void bluezx_ctrl_pairable_cb(char *str)
 		{
 			ctrl->pairable = 0;
 		}
+
+		{
+			ThreadX_t *tidx_req = &bluezx_req_last->tidx;
+			threadx_wakeup_simple(tidx_req);
+		}
 	}
 }
 
 void bluezx_ctrl_name_cb(char *name)
 {
-	DBG_IF_LN("(name: %s)", name);
+	DBG_DB_LN("(name: %s)", name);
 
 	if (bluezx_req_last)
 	{
@@ -47,7 +93,7 @@ void bluezx_ctrl_name_cb(char *name)
 
 void bluezx_ctrl_address_and_name_cb(char *address, char *name)
 {
-	DBG_IF_LN("(address: %s, name: %s)", address, name);
+	DBG_DB_LN("(address: %s, name: %s)", address, name);
 
 	if (bluezx_req_last)
 	{
@@ -63,7 +109,7 @@ void bluezx_gatt_chrc_write_value_cb(struct chrc *chrc, char *device, char *link
 	struct service *service = chrc->service;
 	char *service_uuid = service->uuid;
 
-	DBG_TR_LN("(service_uuid: %s, chrc_uuid: %s, device: %s, link: %s)", service_uuid, chrc_uuid, device, link);
+	DBG_DB_LN("(service_uuid: %s, chrc_uuid: %s, device: %s, link: %s)", service_uuid, chrc_uuid, device, link);
 
 	if ( (bluezx_req_last) && (bluezx_req_last->gatt_chrc_write_value_cb) )
 	{
@@ -190,6 +236,23 @@ void bluezx_client_ready_cb(GDBusClient *client, void *user_data)
 	if (bluezx_req)
 	{
 		bluezx_client_ready_set(bluezx_req, READY_ID_OK);
+
+		{
+			CTRL_t *ctrl = &bluezx_req->ctrl;
+			char val[LEN_OF_BUF128] = "";
+			if ( 0 == bluezx_ctrl_property_get("Pairable", val) )
+			{
+				if ( SAFE_STRSTR(val, "yes") )
+				{
+					ctrl->pairable = 1;
+				}
+				else
+				{
+					ctrl->pairable = 0;
+				}
+			}
+		}
+
 		if (bluezx_req->client_ready_cb)
 		{
 			bluezx_req->client_ready_cb(client, user_data);

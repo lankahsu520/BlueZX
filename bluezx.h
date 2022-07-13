@@ -160,8 +160,8 @@ typedef struct BlueZX_Struct
 //******************************************************************************
 //** function **
 //******************************************************************************
+int bluezx_ctrl_pairable_set(char *str);
 void bluezx_ctrl_pairable_cb(char *str);
-
 void bluezx_ctrl_name_cb(char *name);
 void bluezx_ctrl_address_and_name_cb(char *address, char *name);
 
