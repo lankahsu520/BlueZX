@@ -15,18 +15,16 @@ BLUEZX_DIR=$(PWD)
 BLUEZ_DIR=$(BLUEZX_DIR)/$(BLUEZ)
 
 #** CFLAGS & LDFLAGS **
-CFLAGS += $(CFLAGS_CUSTOMER)
+CFLAGS += $(CFLAGS_OTHERS) $(CFLAGS_CUSTOMER)
 
 CFLAGS += \
+					-DBLUEZX \
+					-DVERSION="\"$(BLUEZ_VERSION)\"" \
 					-include $(SDK_INC_DIR)/utilx9.h \
 					-include $(BLUEZX_DIR)/bluezx.h \
-					-DVERSION="\"$(BLUEZ_VERSION)\"" \
-					-DBLUEZX
-
-CFLAGS += \
-					-I./ \
-					-I$(BLUEZX_DIR)/ \
-					-I$(BLUEZ_DIR) -I$(BLUEZ_DIR)/client -I$(BLUEZ_DIR)/lib
+					-I$(BLUEZX_DIR) \
+					-I$(BLUEZ_DIR) -I$(BLUEZ_DIR)/client -I$(BLUEZ_DIR)/lib \
+					-I./
 LDFLAGS += \
 					-L./
 ARFLAGS = rcs
@@ -100,11 +98,11 @@ CLEAN_LIBS = $(LIBXXX_A) $(LIBXXX_SO)
 
 #** Target (CLEAN_BINS) **
 CLEAN_BINS += \
-						$(BLUEZX_DIR)/bluetoothctl_clone
+							$(BLUEZX_DIR)/bluetoothctl_clone
 
 #** Target (DUMMY_BINS) **
 DUMMY_BINS += \
-						$(BLUEZX_DIR)/bluezx_123
+							$(BLUEZX_DIR)/bluezx_123
 
 CLEAN_BINS += $(DUMMY_BINS)
 CLEAN_OBJS += $(addsuffix .o, $(CLEAN_BINS))
