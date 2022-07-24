@@ -39,6 +39,12 @@
 //******************************************************************************
 //** define **
 //******************************************************************************
+#ifdef MAX_OF_QBUF_2MB
+#define MAX_OF_CHRC_QBUF MAX_OF_QBUF_2MB
+#else
+#define MAX_OF_CHRC_QBUF (2*1024*1024) // 2MB
+#endif
+
 #ifndef DBG_COLOR
 #define DBG_COLOR(color, format, args...) printf(color"[%02ld/%u] %s:%d - "format""COLORX_NONE,  (long) getpid(), (unsigned int)gettidv1_ex(), __FUNCTION__, __LINE__, ## args)
 #define DBG_COLOR_0(color, format, args...) printf(color""format""COLORX_NONE, ## args)

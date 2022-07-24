@@ -2796,7 +2796,7 @@ void gatt_register_chrc(DBusConnection *conn, GDBusProxy *proxy,
 
 #ifdef BLUEZX
 	chrc_set_short(0, chrc);
-	qbuf_init(&chrc->qbuf, MAX_OF_QBUF_1MB);
+	qbuf_init(&chrc->qbuf, MAX_OF_CHRC_QBUF);
 
 	bluezx_gatt_register_chrc_cb(chrc);
 #else
