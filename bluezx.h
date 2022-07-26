@@ -39,11 +39,8 @@
 //******************************************************************************
 //** define **
 //******************************************************************************
-#ifdef MAX_OF_QBUF_2MB
 #define MAX_OF_CHRC_QBUF MAX_OF_QBUF_2MB
-#else
-#define MAX_OF_CHRC_QBUF (2*1024*1024) // 2MB
-#endif
+#define MAX_OF_EXEC_ARGC LEN_OF_BUF2048
 
 #ifndef DBG_COLOR
 #define DBG_COLOR(color, format, args...) printf(color"[%02ld/%u] %s:%d - "format""COLORX_NONE,  (long) getpid(), (unsigned int)gettidv1_ex(), __FUNCTION__, __LINE__, ## args)
@@ -76,11 +73,11 @@
 		DBG_COLOR_0(color,")\n"); \
 	}
 
-#define ARGC_AND_ARGV_ER_DUMP(s1,s2) ARGC_AND_ARGV_DUMP_COLOR(COLORX_RED,s1,s2)
-#define ARGC_AND_ARGV_WN_DUMP(s1,s2) ARGC_AND_ARGV_DUMP_COLOR(COLORX_PURPLE,s1,s2)
-#define ARGC_AND_ARGV_IF_DUMP(s1,s2) ARGC_AND_ARGV_DUMP_COLOR(COLORX_YELLOW,s1,s2)
-#define ARGC_AND_ARGV_DB_DUMP(s1,s2) ARGC_AND_ARGV_DUMP_COLOR(COLORX_WHITE,s1,s2)
-#define ARGC_AND_ARGV_TR_DUMP(s1,s2) ARGC_AND_ARGV_DUMP_COLOR(COLORX_LIGHT_GRAY,s1,s2)
+#define ARGC_AND_ARGV_ER_DUMP(s1,s2) if (dbg_more>=DBG_LVL_ERROR) ARGC_AND_ARGV_DUMP_COLOR(COLORX_RED,s1,s2)
+#define ARGC_AND_ARGV_WN_DUMP(s1,s2) if (dbg_more>=DBG_LVL_WARN) ARGC_AND_ARGV_DUMP_COLOR(COLORX_PURPLE,s1,s2)
+#define ARGC_AND_ARGV_IF_DUMP(s1,s2) if (dbg_more>=DBG_LVL_INFO) ARGC_AND_ARGV_DUMP_COLOR(COLORX_YELLOW,s1,s2)
+#define ARGC_AND_ARGV_DB_DUMP(s1,s2) if (dbg_more>=DBG_LVL_DEBUG) ARGC_AND_ARGV_DUMP_COLOR(COLORX_WHITE,s1,s2)
+#define ARGC_AND_ARGV_TR_DUMP(s1,s2) if (dbg_more>=DBG_LVL_TRACE) ARGC_AND_ARGV_DUMP_COLOR(COLORX_LIGHT_GRAY,s1,s2)
 #endif
 
 //#define BT_SHELL_DBG(format, args...) bt_shell_printf("%s:%d - "format"", __FUNCTION__, __LINE__, ## args)

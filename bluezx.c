@@ -375,7 +375,7 @@ int bluezx_exec_helper(exec_fn cb, void *user_data, char *action, ...)
 {
 	int ret = 0;
 	int argc = 0;
-	char *argv[5];
+	char *argv[MAX_OF_EXEC_ARGC];
 
 	if (action)
 	{

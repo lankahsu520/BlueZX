@@ -19,10 +19,14 @@
 
 #define TAG "bluezx_123"
 
+#define USE_BLUEZX
+#define USE_DBUSX_API
+
 // ** app **
 static int is_quit = 0;
 char save_path[LEN_OF_BUF256]="/tmp";
 
+#ifdef USE_BLUEZX
 static BlueZX_t bluezx_123 = {
 	.name = "bluezx_123",
 
@@ -72,6 +76,115 @@ void simple_client_ready_cb(GDBusClient *client, void *user_data)
 	bluezx_exec_helper(shell_exec_helper, &bluezx_123, "advertise", "on", NULL);
 }
 
+void bluezx_commander(char *command)
+{
+	int argc = 0;
+	char *argv[LEN_OF_BUF2048];
+	char *saveptr = command;
+	
+	while ( (argv[argc++] = SAFE_STRTOK_R(NULL, "&", &saveptr)) )
+	{
+	}
+
+	//ARGC_AND_ARGV_DUMP(argc-1, argv);
+	shell_exec_helper(argc-1, argv, &bluezx_123);
+}
+
+#endif
+
+#ifdef USE_DBUSX_API
+static DbusX_t dbusx_123 = {
+	.name = "dbusx_123",
+
+	.isfree = 0,
+	.isinit = 0,
+	.isgdbus =1,
+
+	.path = DBUS_PATH_LANKAHSU520,
+	.dbus_conn = NULL,
+	.dbus_conn_listen = NULL,
+};
+
+DBusHandlerResult demo_method_cb(DBusConnection *connection, DBusMessage *message, void *usr_data)
+{
+	dbus_bool_t handled = DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	DBusError dbus_err;
+	DBusMessage *dbus_msg_res; //response
+	char *val = NULL;
+	char *retStr = NULL;
+
+	dbus_msg_res = dbus_message_new_method_return(message);
+	if (!dbus_msg_res)
+	{
+		return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	}
+
+	SAFE_DBUS_ERR_INIT(&dbus_err);
+
+	if (!dbus_message_get_args(message, &dbus_err, DBUS_TYPE_STRING, &val, DBUS_TYPE_INVALID))
+	{
+		DBG_ER_LN("dbus_message_get_args error !!! (message: %s)", dbus_err.message);
+		handled = DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+		goto done;
+	}
+
+	DBG_DB_LN("%s (val: %s)", DBG_TXT_GOT, val);
+#ifdef USE_BLUEZX
+	if (val)
+	{
+		bluezx_commander(val);
+	}
+#endif
+
+	SAFE_ASPRINTF(retStr, "%s", DBG_TXT_GOT);
+
+	dbus_message_append_args(dbus_msg_res, DBUS_TYPE_STRING, &retStr, DBUS_TYPE_INVALID);
+	dbus_connection_send(connection, dbus_msg_res, NULL);
+
+	handled = DBUS_HANDLER_RESULT_HANDLED;
+
+done:
+	SAFE_FREE(retStr);
+	SAFE_DBUS_MSG_FREE(dbus_msg_res);
+	SAFE_DBUS_ERR_FREE(&dbus_err);
+
+	return handled;
+}
+
+static DBusHandlerResult dbus_filter_cb(DBusConnection *connection, DBusMessage *message, void *usr_data)
+{
+	dbus_bool_t handled = DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	//const char *method = dbus_message_get_member(message);
+	//const char *iface = dbus_message_get_interface(message);
+	//const char *path = dbus_message_get_path(message);
+
+	if ( dbus_message_is_method_call(message, DBUS_M_IFAC_LANKAHSU520_DEMO, DBUS_METHOD_COMMAND))
+	{
+		handled = demo_method_cb(connection, message, NULL);
+	}
+
+	return handled;
+}
+
+static int dbus_match_cb(DBusConnection *dbus_listen, DBusError *err, void *usr_data)
+{
+	int ret = -1;
+
+	dbus_bus_request_name(dbus_listen, DBUS_DEST_LANKAHSU520, DBUS_NAME_FLAG_REPLACE_EXISTING, err);
+	if (dbus_error_is_set(err))
+	{
+		DBG_ER_LN("dbus_bus_request_name error !!! (%s, %s)", DBUS_DEST_LANKAHSU520, err->message );
+		goto exit_match;
+	}
+
+	ret = 0;
+
+exit_match:
+
+	return ret;
+}
+#endif
+
 static int app_quit(void)
 {
 	return is_quit;
@@ -88,13 +201,24 @@ static void app_stop(void)
 	{
 		app_set_quit(1);
 
+#ifdef USE_DBUSX_API
+		dbusx_thread_close(&dbusx_123);
+#endif
+
+#ifdef USE_BLUEZX
 		bluezx_thread_stop(&bluezx_123);
 		bluezx_thread_close(&bluezx_123);
+#endif
 	}
 }
 
 static void app_loop(void)
 {
+#ifdef USE_DBUSX_API
+	dbusx_thread_init(dbus_match_cb, dbus_filter_cb, &dbusx_123);
+#endif
+
+#ifdef USE_DBUSX_API
 	{
 		bluezx_123.gatt_chrc_write_value_cb = simple_gatt_chrc_write_value_cb;
 		bluezx_123.client_ready_cb = simple_client_ready_cb;
@@ -113,6 +237,7 @@ static void app_loop(void)
 			sleep(1);
 		}
 	}
+#endif
 }
 
 static int app_init(void)
