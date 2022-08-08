@@ -90,6 +90,10 @@ char *gatt_attribute_generator(const char *text, int state);
 
 void gatt_read_attribute(GDBusProxy *proxy, int argc, char *argv[]);
 void gatt_write_attribute(GDBusProxy *proxy, int argc, char *argv[]);
+#ifdef BLUEZX
+void gatt_push_attribute(GDBusProxy *proxy, int argc, char *argv[]);
+void gatt_stop_attribute(GDBusProxy *proxy, int argc, char *argv[]);
+#endif
 void gatt_notify_attribute(GDBusProxy *proxy, bool enable);
 void gatt_clone_attribute(GDBusProxy *proxy, int argc, char *argv[]);
 

@@ -1127,7 +1127,6 @@ static gboolean interfaces_added(DBusConnection *conn, DBusMessage *msg,
 	DBusMessageIter iter;
 	const char *path;
 
-	DBG_WN_LN("=>>");
 	if (dbus_message_iter_init(msg, &iter) == FALSE)
 		return TRUE;
 
@@ -1137,6 +1136,7 @@ static gboolean interfaces_added(DBusConnection *conn, DBusMessage *msg,
 	dbus_message_iter_get_basic(&iter, &path);
 	dbus_message_iter_next(&iter);
 
+	DBG_WN_LN("(service_name: %s, base_path: %s, root_path: %s, path: %s)", client->service_name, client->base_path, client->root_path, path);
 	g_dbus_client_ref(client);
 
 	parse_interfaces(client, path, &iter);

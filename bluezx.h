@@ -81,9 +81,11 @@
 #endif
 
 //#define BT_SHELL_DBG(format, args...) bt_shell_printf("%s:%d - "format"", __FUNCTION__, __LINE__, ## args)
-#define BT_SHELL_DBG(format, args...) ({ DBG_IF(format, ## args); })
+//#define BT_SHELL_DBG(format, args...) ({ DBG_IF(format, ## args); })
+#define BT_SHELL_DBG(format, args...) ({ DBG_DB(format, ## args); })
 //#define BT_SHELL_DBG_0(format, args...) bt_shell_printf("%s:%d - "format"", __FUNCTION__, __LINE__, ## args)
-#define BT_SHELL_DBG_0(format, args...) ({ DBG_IF_0(format, ## args)}; })
+//#define BT_SHELL_DBG_0(format, args...) ({ DBG_IF_0(format, ## args)}; })
+#define BT_SHELL_DBG_0(format, args...) ({ DBG_DB_0(format, ## args)}; })
 
 #define ARGC_AND_ARGV_DUMP(s1,s2) ARGC_AND_ARGV_DB_DUMP(s1,s2)
 

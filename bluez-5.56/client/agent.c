@@ -339,7 +339,7 @@ void agent_register(DBusConnection *conn, GDBusProxy *manager,
 		return;
 	}
 
-	DBG_WN_LN("call g_dbus_proxy_method_call ... (RegisterAgent, agent_registered: %d)", agent_registered);
+	DBG_TR_LN("call g_dbus_proxy_method_call ... (RegisterAgent, agent_registered: %d)", agent_registered);
 	if (g_dbus_proxy_method_call(manager, "RegisterAgent",
 						register_agent_setup,
 						register_agent_reply,
@@ -387,7 +387,7 @@ void agent_unregister(DBusConnection *conn, GDBusProxy *manager)
 		return;
 	}
 
-	DBG_WN_LN("call g_dbus_proxy_method_call ... (UnregisterAgent, agent_registered: %d)", agent_registered);
+	DBG_TR_LN("call g_dbus_proxy_method_call ... (UnregisterAgent, agent_registered: %d)", agent_registered);
 	if (g_dbus_proxy_method_call(manager, "UnregisterAgent",
 						unregister_agent_setup,
 						unregister_agent_reply,
@@ -429,7 +429,7 @@ void agent_default(DBusConnection *conn, GDBusProxy *manager)
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
-	DBG_WN_LN("call g_dbus_proxy_method_call ... (RequestDefaultAgent, agent_registered: %d)", agent_registered);
+	DBG_TR_LN("call g_dbus_proxy_method_call ... (RequestDefaultAgent, agent_registered: %d)", agent_registered);
 	if (g_dbus_proxy_method_call(manager, "RequestDefaultAgent",
 						request_default_setup,
 						request_default_reply,

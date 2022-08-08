@@ -753,7 +753,7 @@ static void read_setup(DBusMessageIter *iter, void *user_data)
 
 static void read_attribute(GDBusProxy *proxy, uint16_t offset)
 {
-	DBG_WN_LN("call g_dbus_proxy_method_call ... (ReadValue)");
+	DBG_TR_LN("call g_dbus_proxy_method_call ... (ReadValue)");
 	if (g_dbus_proxy_method_call(proxy, "ReadValue", read_setup, read_reply,
 						&offset, NULL) == FALSE) {
 		BT_SHELL_DBG("Failed to read\n");
@@ -869,7 +869,7 @@ static void write_attribute(GDBusProxy *proxy,
 		return;
 	}
 
-	DBG_WN_LN("call g_dbus_proxy_method_call ... (WriteValue)");
+	DBG_TR_LN("call g_dbus_proxy_method_call ... (WriteValue, mtu: %d, iov_len: %ld)", write_io.mtu, data->iov.iov_len);
 	if (g_dbus_proxy_method_call(proxy, "WriteValue", write_setup,
 					write_reply, data, NULL) == FALSE) {
 		BT_SHELL_DBG("Failed to write\n");
@@ -945,6 +945,218 @@ void gatt_write_attribute(GDBusProxy *proxy, int argc, char *argv[])
 
 	return bt_shell_noninteractive_quit(EXIT_FAILURE);
 }
+
+#ifdef BLUEZX
+static int is_push_stop = 0;
+static int is_pushing = 0;
+
+struct push_attribute_data {
+	DBusMessage *msg;
+	struct iovec iov;
+	char *type;
+	uint16_t offset;
+
+	FILE* fp;
+	char filename[LEN_OF_FILENAME1024];
+	ssize_t total;
+	ssize_t send;
+	int isfail;
+	int iseof;
+
+	GDBusProxy *proxy;
+};
+
+void push_data_helper(struct push_attribute_data *data);
+
+static void push_reply(DBusMessage *message, void *user_data)
+{
+	struct push_attribute_data *wd = (struct push_attribute_data *)user_data;
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		wd->isfail = 1;
+
+		BT_SHELL_DBG("Failed to write: %s\n", error.name);
+		dbus_error_free(&error);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	push_data_helper(wd);
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+
+static void push_setup(DBusMessageIter *iter, void *user_data)
+{
+	struct push_attribute_data *wd = user_data;
+	DBusMessageIter array, dict;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY, "y", &array);
+	dbus_message_iter_append_fixed_array(&array, DBUS_TYPE_BYTE,
+						&wd->iov.iov_base,
+						wd->iov.iov_len);
+	dbus_message_iter_close_container(iter, &array);
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+					DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+					DBUS_TYPE_STRING_AS_STRING
+					DBUS_TYPE_VARIANT_AS_STRING
+					DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
+					&dict);
+
+	if (wd->type)
+		g_dbus_dict_append_entry(&dict, "type", DBUS_TYPE_STRING,
+								&wd->type);
+
+	g_dbus_dict_append_entry(&dict, "offset", DBUS_TYPE_UINT16,
+								&wd->offset);
+
+	dbus_message_iter_close_container(iter, &dict);
+}
+
+static void push_attribute(GDBusProxy *proxy,
+				struct push_attribute_data *data)
+{
+	data->send += data->iov.iov_len;
+	
+	DBG_TR_LN("call g_dbus_proxy_method_call ... (WriteValue, filename: %s)", data->filename);
+	if (g_dbus_proxy_method_call(proxy, "WriteValue", push_setup, push_reply, data, NULL) == FALSE) {
+		BT_SHELL_DBG("Failed to write %s (filename: %s)\n",	g_dbus_proxy_get_path(proxy), data->filename);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	double push_progress = 0;
+	if (data->total>0)
+	{
+		push_progress = (double)data->send/data->total;
+	}
+
+	if ( (is_pushing%10) == 0 )
+	{
+		DBG_WN_LN("Attempting to write %s (filename: %s, iov_len: %ld, total: %zd/%zd %.02f)",
+						g_dbus_proxy_get_path(proxy), data->filename, data->iov.iov_len, data->send, data->total, push_progress);
+	}
+	else
+	{
+		BT_SHELL_DBG("Attempting to write %s (filename: %s, iov_len: %ld, total: %zd/%zd %.02f)\n",
+						g_dbus_proxy_get_path(proxy), data->filename, data->iov.iov_len, data->send, data->total, push_progress);
+	}
+}
+
+static uint8_t *file2bytearray(FILE* fp, size_t *val_len)
+{
+	uint8_t value[MAX_ATTR_VAL_LEN] = "";
+	unsigned int i = 0;
+
+	*val_len = 0;
+	i = SAFE_FREAD(value, 1, sizeof(value), fp);
+	if (i > 0)
+	{
+		*val_len = i;
+
+#if GLIB_CHECK_VERSION(2, 68, 0)
+		return g_memdup2(value, i);
+#else
+		return g_memdup(value, i);
+#endif
+	}
+	else
+	{
+		return NULL;
+	}
+}
+
+void push_data_helper(struct push_attribute_data *data)
+{
+	if (data->fp) 
+	{
+		//DBG_DB_LN("(data->isfail: %d, data->iseof: %d)", data->isfail, data->iseof);
+		if ( ( data->isfail == 0 ) && ( data->iseof ==0 ) && ( is_push_stop == 0 ) )
+		{
+			is_pushing ++;
+			data->iov.iov_base = file2bytearray(data->fp, &data->iov.iov_len);
+			if ( data->iov.iov_len > 0 )
+			{
+				push_attribute(data->proxy, data);
+			}
+			else
+			{
+				data->iseof = 1;
+			}
+		}
+
+		if ( ( data->isfail != 0 ) || ( data->iseof != 0 ) || ( is_push_stop == 1 ) )
+		{
+			is_pushing = 0;
+			SAFE_FCLOSE(data->fp);
+			SAFE_FREE(data);
+			DBG_WN_LN("Pushing is end !!! (is_pushing : %d)", is_pushing);
+		}
+	}
+}
+
+void gatt_push_attribute(GDBusProxy *proxy, int argc, char *argv[])
+{
+	const char *iface;
+	struct push_attribute_data *data = (struct push_attribute_data *)SAFE_CALLOC(1, sizeof(struct push_attribute_data));
+
+	is_push_stop = 0;
+
+	if (is_pushing)
+	{
+		DBG_WN_LN("Please stop pushing first !!! (is_pushing : %d)", is_pushing);
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+		
+	if (data)
+	{
+		ARGC_AND_ARGV_DUMP(argc, argv)
+
+		memset(data, 0, sizeof(struct push_attribute_data));
+
+		iface = g_dbus_proxy_get_interface(proxy);
+		if (!strcmp(iface, "org.bluez.GattCharacteristic1") ||
+					!strcmp(iface, "org.bluez.GattDescriptor1")) {
+			SAFE_SPRINTF(data->filename, "%s", argv[1]);
+
+			if (argc > 2)
+				data->offset = atoi(argv[2]);
+
+			if (argc > 3)
+				data->type = argv[3];
+
+			if ( SAFE_STRLEN(data->filename) > 0 )
+			{
+				data->proxy = proxy;
+				data->fp = SAFE_FOPEN(data->filename, "r");
+				{
+					SAFE_FSEEK_END(data->fp , 0);
+					data->total = SAFE_FTELL(data->fp);
+					SAFE_FSEEK_SET(data->fp , 0);
+				}
+				data->send = 0;
+				data->iseof = 0;
+				push_data_helper(data);
+			}
+			return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+		}
+
+		BT_SHELL_DBG("Unable to push a file %s\n",
+							g_dbus_proxy_get_path(proxy));
+	}
+
+	return bt_shell_noninteractive_quit(EXIT_FAILURE);
+}
+
+void gatt_stop_attribute(GDBusProxy *proxy, int argc, char *argv[])
+{
+	is_push_stop = 1;
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
+#endif
 
 static bool sock_read(struct io *io, void *user_data)
 {
@@ -1089,7 +1301,7 @@ void gatt_acquire_write(GDBusProxy *proxy, const char *arg)
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
-	DBG_WN_LN("call g_dbus_proxy_method_call ... (AcquireWrite)");
+	DBG_TR_LN("call g_dbus_proxy_method_call ... (AcquireWrite)");
 	if (g_dbus_proxy_method_call(proxy, "AcquireWrite", acquire_setup,
 				acquire_write_reply, NULL, NULL) == FALSE) {
 		BT_SHELL_DBG("Failed to AcquireWrite\n");
@@ -1159,7 +1371,7 @@ void gatt_acquire_notify(GDBusProxy *proxy, const char *arg)
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
-	DBG_WN_LN("call g_dbus_proxy_method_call ... (AcquireNotify)");
+	DBG_TR_LN("call g_dbus_proxy_method_call ... (AcquireNotify)");
 	if (g_dbus_proxy_method_call(proxy, "AcquireNotify", acquire_setup,
 				acquire_notify_reply, NULL, NULL) == FALSE) {
 		BT_SHELL_DBG("Failed to AcquireNotify\n");
@@ -1209,7 +1421,7 @@ static void notify_attribute(GDBusProxy *proxy, bool enable)
 	else
 		method = "StopNotify";
 
-	DBG_WN_LN("call g_dbus_proxy_method_call ... (%s, enable: %d)", method, enable);
+	DBG_TR_LN("call g_dbus_proxy_method_call ... (%s, enable: %d)", method, enable);
 	if (g_dbus_proxy_method_call(proxy, method, NULL, notify_reply,
 				GUINT_TO_POINTER(enable), NULL) == FALSE) {
 		BT_SHELL_DBG("Failed to %s notify\n",
@@ -1359,7 +1571,7 @@ void gatt_register_app(DBusConnection *conn, GDBusProxy *proxy,
 		}
 	}
 
-	DBG_WN_LN("call g_dbus_proxy_method_call ... (RegisterApplication)");
+	DBG_TR_LN("call g_dbus_proxy_method_call ... (RegisterApplication)");
 	if (g_dbus_proxy_method_call(l->data, "RegisterApplication",
 						register_app_setup,
 						register_app_reply, NULL,
@@ -1414,7 +1626,7 @@ void gatt_unregister_app(DBusConnection *conn, GDBusProxy *proxy)
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
-	DBG_WN_LN("call g_dbus_proxy_method_call ... (UnregisterApplication)");
+	DBG_TR_LN("call g_dbus_proxy_method_call ... (UnregisterApplication)");
 	if (g_dbus_proxy_method_call(l->data, "UnregisterApplication",
 						unregister_app_setup,
 						unregister_app_reply, conn,
@@ -2172,7 +2384,7 @@ static DBusMessage *proxy_read_value(struct GDBusProxy *proxy, DBusMessage *msg,
 	data->msg = dbus_message_ref(msg);
 	data->offset = offset;
 
-	DBG_WN_LN("call g_dbus_proxy_method_call ... (ReadValue, offset: %d)", offset);
+	DBG_TR_LN("call g_dbus_proxy_method_call ... (ReadValue, offset: %d)", offset);
 	if (g_dbus_proxy_method_call(proxy, "ReadValue", proxy_read_setup,
 					proxy_read_reply, data, NULL))
 		return NULL;
@@ -2199,9 +2411,9 @@ static DBusMessage *chrc_read_value(DBusConnection *conn, DBusMessage *msg,
 					"org.bluez.Error.InvalidArguments",
 					NULL);
 
-	BT_SHELL_DBG("[%s (%s)] ReadValue(%p): %s offset %u link %s\n",
-			chrc->path, bt_uuidstr_to_str(chrc->uuid), chrc,
-			path_to_address(device), offset, link);
+	BT_SHELL_DBG("[%s (%s)] ReadValue: %s offset %u link %s len %zd\n",
+			chrc->path, bt_uuidstr_to_str(chrc->uuid),
+			path_to_address(device), offset, link, chrc->value_len);
 
 	if (chrc->proxy) {
 		return proxy_read_value(chrc->proxy, msg, offset);
@@ -2366,7 +2578,7 @@ static DBusMessage *proxy_write_value(struct GDBusProxy *proxy,
 	data->iov.iov_len = value_len;
 	data->offset = offset;
 
-	DBG_WN_LN("call g_dbus_proxy_method_call ... (WriteValue, offset: %d)", offset);
+	DBG_TR_LN("call g_dbus_proxy_method_call ... (WriteValue, offset: %d)", offset);
 	if (g_dbus_proxy_method_call(proxy, "WriteValue", write_setup,
 					proxy_write_reply, data, NULL))
 		return NULL;
@@ -2402,9 +2614,9 @@ static DBusMessage *chrc_write_value(DBusConnection *conn, DBusMessage *msg,
 		return g_dbus_create_error(msg,
 				"org.bluez.Error.InvalidArguments", NULL);
 
-	BT_SHELL_DBG("[%s (%s)] WriteValue: %s offset %u link %s\n",
+	BT_SHELL_DBG("[%s (%s)] WriteValue: %s offset %u link %s len %d\n",
 			chrc->path, bt_uuidstr_to_str(chrc->uuid),
-			path_to_address(device), offset, link);
+			path_to_address(device), offset, link, value_len);
 
 	DBG_TR_LN("call bt_shell_hexdump ...");
 	bt_shell_hexdump(value, value_len);
@@ -2442,12 +2654,15 @@ static DBusMessage *chrc_write_value(DBusConnection *conn, DBusMessage *msg,
 	if (prep_authorize)
 		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 
+	size_t total = 0;
 #ifdef BLUEZX
 	{
 		qbuf_write(&chrc->qbuf, (char*)value, value_len);
 
 		bluezx_gatt_chrc_write_value_cb(chrc, (char*)path_to_address(device), link);
 	}
+
+	total = qbuf_total(&chrc->qbuf);
 #else
 	if (write_value(&chrc->value_len, &chrc->value, value, value_len,
 						offset, chrc->max_val_len))
@@ -2455,8 +2670,8 @@ static DBusMessage *chrc_write_value(DBusConnection *conn, DBusMessage *msg,
 				"org.bluez.Error.InvalidValueLength", NULL);
 #endif
 
-	BT_SHELL_DBG("[" COLORED_CHG "] Attribute %s (%s) written",
-			chrc->path, bt_uuidstr_to_str(chrc->uuid));
+	BT_SHELL_DBG("[" COLORED_CHG "] Attribute %s (%s) written (offset %u link %s len %d/%zd)\n",
+			chrc->path, bt_uuidstr_to_str(chrc->uuid), offset, link, value_len, total);
 
 	g_dbus_emit_property_changed(conn, chrc->path, CHRC_INTERFACE, "Value");
 
@@ -2622,7 +2837,7 @@ static DBusMessage *proxy_notify(struct chrc *chrc, DBusMessage *msg,
 	data->msg = dbus_message_ref(msg);
 	data->enable = enable;
 
-	DBG_WN_LN("call g_dbus_proxy_method_call ... (%s, enable: %d)", method, enable);
+	DBG_TR_LN("call g_dbus_proxy_method_call ... (%s, enable: %d)", method, enable);
 	if (g_dbus_proxy_method_call(chrc->proxy, method, NULL,
 					proxy_notify_reply, data, NULL))
 		return NULL;

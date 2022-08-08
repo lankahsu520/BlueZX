@@ -488,7 +488,7 @@ void ad_register(DBusConnection *conn, GDBusProxy *manager, const char *type)
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
-	DBG_WN_LN("call g_dbus_proxy_method_call ... (RegisterAdvertisement)");
+	DBG_TR_LN("call g_dbus_proxy_method_call ... (RegisterAdvertisement)");
 	if (g_dbus_proxy_method_call(manager, "RegisterAdvertisement",
 					register_setup, register_reply,
 					conn, NULL) == FALSE) {
@@ -541,7 +541,7 @@ void ad_unregister(DBusConnection *conn, GDBusProxy *manager)
 	g_free(ad.type);
 	ad.type = NULL;
 
-	DBG_WN_LN("call g_dbus_proxy_method_call ... (UnregisterAdvertisement)");
+	DBG_TR_LN("call g_dbus_proxy_method_call ... (UnregisterAdvertisement)");
 	if (g_dbus_proxy_method_call(manager, "UnregisterAdvertisement",
 					unregister_setup, unregister_reply,
 					conn, NULL) == FALSE) {

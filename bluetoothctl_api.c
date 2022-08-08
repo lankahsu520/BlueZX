@@ -1101,6 +1101,21 @@ static void cmd_repeater(int argc, char *argv[])
 {
 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
 }
+
+static void cmd_debug(int argc, char *argv[])
+{
+	if (argc < 2 || !strlen(argv[1]))
+	{
+		dbg_lvl_round();
+	}
+	else
+	{
+		dbg_lvl_set(atoi(argv[1]));
+	}
+	DBG_ER_LN("dbg_lvl_get(): %d", dbg_lvl_get());
+
+	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+}
 #endif
 
 static void cmd_list(int argc, char *argv[])
@@ -1593,7 +1608,7 @@ static void set_discovery_filter(bool cleared)
 
 	func = cleared ? clear_discovery_filter : set_discovery_filter_setup;
 
-	DBG_WN_LN("call g_dbus_proxy_method_call ... (SetDiscoveryFilter, cleared: %d)", cleared);
+	DBG_TR_LN("call g_dbus_proxy_method_call ... (SetDiscoveryFilter, cleared: %d)", cleared);
 	if (g_dbus_proxy_method_call(default_ctrl->proxy, "SetDiscoveryFilter",
 					func, set_discovery_filter_reply,
 					&filter, NULL) == FALSE) {
@@ -1621,7 +1636,7 @@ static void cmd_scan(int argc, char *argv[])
 	} else
 		method = "StopDiscovery";
 
-	DBG_WN_LN("call g_dbus_proxy_method_call ... (%s, enable: %d)", method, enable);
+	DBG_TR_LN("call g_dbus_proxy_method_call ... (%s, enable: %d)", method, enable);
 	if (g_dbus_proxy_method_call(default_ctrl->proxy, method,
 				NULL, start_discovery_reply,
 				GUINT_TO_POINTER(enable), NULL) == FALSE) {
@@ -2000,8 +2015,8 @@ static const char *proxy_address(GDBusProxy *proxy)
 	if (!g_dbus_proxy_get_property(proxy, "Address", &iter))
 		return NULL;
 
-	DBG_DB_LN("(addr: %s)", addr);
 	dbus_message_iter_get_basic(&iter, &addr);
+	DBG_DB_LN("(addr: %s)", addr);
 
 	return addr;
 }
@@ -2014,7 +2029,7 @@ static void cmd_pair(int argc, char *argv[])
 	if (!proxy)
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
-	DBG_WN_LN("call g_dbus_proxy_method_call ... (Pair)");
+	DBG_TR_LN("call g_dbus_proxy_method_call ... (Pair)");
 	if (g_dbus_proxy_method_call(proxy, "Pair", NULL, pair_reply,
 							NULL, NULL) == FALSE) {
 		BT_SHELL_DBG("Failed to pair\n");
@@ -2047,7 +2062,7 @@ static void cmd_cancel_pairing(int argc, char *argv[])
 	if (!proxy)
 		return;
 
-	DBG_WN_LN("call g_dbus_proxy_method_call ... (CancelPairing)");
+	DBG_TR_LN("call g_dbus_proxy_method_call ... (CancelPairing)");
 	if (g_dbus_proxy_method_call(proxy, "CancelPairing", NULL,
 				cancel_pairing_reply, NULL, NULL) == FALSE) {
 		BT_SHELL_DBG("Failed to cancel pairing\n");
@@ -2186,7 +2201,7 @@ static void remove_device(GDBusProxy *proxy)
 
 	path = g_strdup(g_dbus_proxy_get_path(proxy));
 
-	DBG_WN_LN("call g_dbus_proxy_method_call ... (RemoveDevice)");
+	DBG_TR_LN("call g_dbus_proxy_method_call ... (RemoveDevice)");
 	if (g_dbus_proxy_method_call(default_ctrl->proxy, "RemoveDevice",
 						remove_device_setup,
 						remove_device_reply,
@@ -2257,7 +2272,7 @@ static void cmd_connect(int argc, char *argv[])
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 	}
 
-	DBG_WN_LN("call g_dbus_proxy_method_call ... (Connect)");
+	DBG_TR_LN("call g_dbus_proxy_method_call ... (Connect)");
 	if (g_dbus_proxy_method_call(proxy, "Connect", NULL, connect_reply,
 							proxy, NULL) == FALSE) {
 		BT_SHELL_DBG("Failed to connect\n");
@@ -2296,7 +2311,7 @@ static void cmd_disconn(int argc, char *argv[])
 	if (!proxy)
 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
 
-	DBG_WN_LN("call g_dbus_proxy_method_call ... (Disconnect)");
+	DBG_TR_LN("call g_dbus_proxy_method_call ... (Disconnect)");
 	if (g_dbus_proxy_method_call(proxy, "Disconnect", NULL, disconn_reply,
 							proxy, NULL) == FALSE) {
 		BT_SHELL_DBG("Failed to disconnect\n");
@@ -2454,6 +2469,28 @@ static void cmd_write(int argc, char *argv[])
 
 	gatt_write_attribute(default_attr, argc, argv);
 }
+
+#ifdef BLUEZX
+static void cmd_push(int argc, char *argv[])
+{
+	if (!default_attr) {
+		BT_SHELL_DBG("No attribute selected\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	gatt_push_attribute(default_attr, argc, argv);
+}
+
+static void cmd_stop(int argc, char *argv[])
+{
+	if (!default_attr) {
+		BT_SHELL_DBG("No attribute selected\n");
+		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+	}
+
+	gatt_stop_attribute(default_attr, argc, argv);
+}
+#endif
 
 static void cmd_acquire_write(int argc, char *argv[])
 {
@@ -3164,6 +3201,10 @@ static const struct bt_shell_menu gatt_menu = {
 	{ "read", "[offset]", cmd_read, "Read attribute value" },
 	{ "write", "<data=xx xx ...> [offset] [type]", cmd_write,
 						"Write attribute value" },
+#ifdef BLUEZX
+	{ "push", "<filename>", cmd_push, "Push a file" },
+	{ "stop", NULL, cmd_stop, "Stop pushing" },
+#endif
 	{ "acquire-write", NULL, cmd_acquire_write,
 					"Acquire Write file descriptor" },
 	{ "release-write", NULL, cmd_release_write,
@@ -3210,6 +3251,7 @@ static const struct bt_shell_menu main_menu = {
 	.entries = {
 #ifdef BLUEZX
 	{ "repeater",     NULL,       cmd_repeater, "Repeater" },
+	{ "debug",        "[level]",  cmd_debug, "Set Debug Level 0~4" },
 #endif
 	{ "list",         NULL,       cmd_list, "List available controllers" },
 	{ "show",         "[ctrl]",   cmd_show, "Controller information",

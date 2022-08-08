@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
 {
 	int status;
 
-	dbg_lvl_set(DBG_LVL_DEBUG);
+	dbg_lvl_set(DBG_LVL_INFO);
 	status = bluetoothctl_start(argc, argv, NULL);
 
 	return status;
