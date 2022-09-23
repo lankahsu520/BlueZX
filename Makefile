@@ -6,7 +6,9 @@ VERSION_MAJOR = 1
 VERSION_MINOR = 0
 VERSION_REVISION = 1
 VERSION_FULL = $(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_REVISION)
-LIBNAME = xxx
+LIBNAME_A = xxx
+LIBNAME_SO =
+LIBNAME_MOD =
 
 BLUEZ_VERSION=5.56
 BLUEZ=bluez-$(BLUEZ_VERSION)
@@ -72,13 +74,17 @@ LIBXXX_OBJS += \
 							$(BLUEZX_DIR)/bluezx.o
 
 #** LIBXXX_yes **
-LIBXXX_A = lib$(LIBNAME).a
-#LIBXXX_A += libgdbus-internal.a
-#LIBXXX_A += libshared-glib.a
-#LIBXXX_SO = lib$(LIBNAME).so
-#LIBXXXS_$(PJ_HAS_STATIC_LIB) += $(LIBXXX_A)
-#LIBXXXS_$(PJ_HAS_SHARE_LIB) += -l$(LIBNAME)
+ifneq ("$(LIBNAME_A)", "")
+LIBXXX_A = lib$(LIBNAME_A).a
 LIBXXXS_yes += $(LIBXXX_A)
+endif
+ifneq ("$(LIBNAME_SO)", "")
+LIBXXX_SO = lib$(LIBNAME_SO).so
+LIBXXXS_yes += -l$(LIBNAME_SO)
+endif
+ifneq ("$(LIBNAME_MOD)", "")
+LIBXXX_MOD = $(LIBNAME_MOD).so
+endif
 
 #** HEADER_FILES **
 HEADER_FILES = \
@@ -90,11 +96,10 @@ LIBS_yes = $(LIBXXXS_yes)
 
 LIBS += $(LIBS_yes) -lreadline -lncurses #-ltinfo
 #-lgobject-2.0 -lgio-2.0 -lglib-2.0
-#-lz -ldl -lpthread -lm
 
 #** Clean **
 CLEAN_OBJS = $(LIBXXX_OBJS)
-CLEAN_LIBS = $(LIBXXX_A) $(LIBXXX_SO)
+CLEAN_LIBS = $(LIBXXX_A) $(LIBXXX_SO) $(LIBXXX_MOD)
 
 #** Target (CLEAN_BINS) **
 CLEAN_BINS += \
@@ -115,6 +120,9 @@ DUMMY_SBINS = $(SHELL_SBINS)
 #** Target (CONFS) **
 CONFS = \
 				$(wildcard conf/*.conf)
+
+#** Target (AUTO_GENERATEDS) **
+AUTO_GENERATEDS = \
 
 TO_FOLDER =
 
@@ -140,7 +148,7 @@ $(CLEAN_BINS): $(CLEAN_OBJS) $(CLEAN_LIBS)
 	@echo ' '
 
 clean:
-	$(PJ_SH_RM) Makefile.bak $(CLEAN_BINS) $(CLEAN_BINS:=.elf) $(CLEAN_BINS:=.gdb)
+	$(PJ_SH_RM) Makefile.bak $(CLEAN_BINS) $(CLEAN_BINS:=.elf) $(CLEAN_BINS:=.gdb) $(AUTO_GENERATEDS)
 	$(PJ_SH_RM) .configured .patched $(addsuffix *, $(CLEAN_LIBS)) $(CLEAN_OBJS) $(CLEAN_OBJS:%.o=%.c.bak) $(CLEAN_OBJS:%.o=%.h.bak)
 	@for subbin in $(CLEAN_BINS); do \
 		($(PJ_SH_RM) $(SDK_BIN_DIR)/$$subbin;); \
@@ -154,7 +162,6 @@ clean:
 	@for subshell in $(SHELL_SBINS); do \
 		($(PJ_SH_RM) $(SDK_SBIN_DIR)/$$subshell;); \
 	done
-	@$(PJ_SH_RMDIR) build_xxx .meson_config build.meson meson_options.txt meson_public
 
 distclean: clean
 
@@ -173,21 +180,51 @@ distclean: clean
 	@echo ' '
 
 install: all
+	[ "$(CLEAN_BINS)" = "" ] || $(PJ_SH_MKDIR) $(SDK_BIN_DIR)
 	@for subbin in $(CLEAN_BINS); do \
 		$(PJ_SH_CP) $$subbin $(SDK_BIN_DIR); \
 		$(STRIP) $(SDK_BIN_DIR)/`basename $$subbin`; \
 	done
+	[ "$(LIBXXX_SO)" = "" ] || $(PJ_SH_MKDIR) $(SDK_LIB_DIR)
+	@for sublib in $(LIBXXX_SO); do \
+		$(PJ_SH_CP) $$sublib* $(SDK_LIB_DIR); \
+		$(STRIP) $(SDK_LIB_DIR)/$$sublib.$(VERSION_FULL); \
+	done
+	[ "$(HEADER_FILES)" = "" ] || $(PJ_SH_MKDIR) $(SDK_INC_DIR)
+	@for subheader in $(HEADER_FILES); do \
+		$(PJ_SH_CP) $$subheader $(SDK_INC_DIR); \
+	done
+	[ "$(SHELL_SBINS)" = "" ] || $(PJ_SH_MKDIR) $(SDK_SBIN_DIR)
 	@for subshell in $(SHELL_SBINS); do \
 		$(PJ_SH_CP) $$subshell $(SDK_SBIN_DIR); \
+	done
+	[ "$(CONFS)" = "" ] || $(PJ_SH_MKDIR) $(SDK_IOT_DIR)/$(TO_FOLDER)
+	@for conf in $(CONFS); do \
+		$(PJ_SH_CP) $$conf $(SDK_IOT_DIR)/$(TO_FOLDER); \
 	done
 
 romfs: install
 ifneq ("$(HOMEX_ROOT_DIR)", "")
+	[ "$(DUMMY_BINS)" = "" ] || $(PJ_SH_MKDIR) $(HOMEX_BIN_DIR)
 	@for subbin in $(DUMMY_BINS); do \
 		$(PJ_SH_CP) $$subbin $(HOMEX_BIN_DIR); \
 		$(STRIP) $(HOMEX_BIN_DIR)/`basename $$subbin`; \
 	done
+	[ "$(LIBXXX_SO)" = "" ] || $(PJ_SH_MKDIR) $(HOMEX_LIB_DIR)
+	@for sublib in $(LIBXXX_SO); do \
+		$(PJ_SH_CP) $$sublib* $(HOMEX_LIB_DIR); \
+		$(STRIP) $(HOMEX_LIB_DIR)/$$sublib.$(VERSION_FULL); \
+	done
+	#[ "$(HEADER_FILES)" = "" ] || $(PJ_SH_MKDIR) $(HOMEX_INC_DIR)
+	#@for subheader in $(HEADER_FILES); do \
+	#	$(PJ_SH_CP) $$subheader $(HOMEX_INC_DIR); \
+	#done
+	[ "$(DUMMY_SBINS)" = "" ] || $(PJ_SH_MKDIR) $(HOMEX_SBIN_DIR)
 	@for subshell in $(DUMMY_SBINS); do \
 		$(PJ_SH_CP) $$subshell $(HOMEX_SBIN_DIR); \
+	done
+	[ "$(CONFS)" = "" ] || $(PJ_SH_MKDIR) $(HOMEX_IOT_DIR)/$(TO_FOLDER)
+	@for conf in $(CONFS); do \
+		$(PJ_SH_CP) $$conf $(HOMEX_IOT_DIR)/$(TO_FOLDER); \
 	done
 endif
