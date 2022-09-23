@@ -1,6 +1,9 @@
 PWD=$(shell pwd)
 -include $(SDK_CONFIG_CONFIG)
 
+#** include *.mk **
+-include define.mk
+
 #[major].[minor].[revision].[build]
 VERSION_MAJOR = 1
 VERSION_MINOR = 0
@@ -126,9 +129,6 @@ AUTO_GENERATEDS = \
 
 TO_FOLDER =
 
-#** include *.mk **
--include define.mk
-
 .DEFAULT_GOAL = all
 .SUFFIXES: .c .o
 
@@ -164,6 +164,9 @@ clean:
 	done
 
 distclean: clean
+	[ -L meson_public ] && ($(PJ_SH_RMDIR) meson_public; ) || true
+	[ -d ./subprojects ] && [ -f meson.build ] && (meson subprojects purge --confirm;) || true
+	$(PJ_SH_RMDIR) build_xxx .meson_config build.meson meson_options.txt
 
 %.a: $(LIBXXX_OBJS)
 	@echo 'Building lib (static): $@'
